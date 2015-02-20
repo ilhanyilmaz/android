@@ -1,7 +1,5 @@
-1- sudo apt-get install openjdk-7-jdk
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
-export PATH=$PATH:/usr/lib/jvm/java-7-openjdk-amd64/bin
-javac
+install java:
+https://www.digitalocean.com/community/tutorials/how-to-install-java-on-ubuntu-with-apt-get
 sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1
 
 
