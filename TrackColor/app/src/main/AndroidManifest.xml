@@ -4,6 +4,7 @@ package="com.digitalwonders.ilhan.trackcolor" >
 
 <application
     android:allowBackup="true"
+    android:largeHeap="true"
     android:icon="@mipmap/ic_launcher"
     android:label="@string/app_name"
     android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
@@ -33,7 +34,6 @@ package="com.digitalwonders.ilhan.trackcolor" >
 <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
 <uses-feature android:name="android.hardware.camera.front.autofocus" android:required="false"/>
-
 </manifest>
     <!--?xml version="1.0" encoding="utf-8"?>
     <manifest xmlns:android="http://schemas.android.com/apk/res/android"
