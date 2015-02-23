@@ -19,10 +19,11 @@ public class MotionTrackerHSV extends MotionTracker {
 		offset = 15;
     }
     
-    void update(Mat _frame) {
+    public void update(Mat _frame) {
         /*Mat diffImageHSV;
         Mat diffImageRGB = new Mat();*/
-    	
+    	//if(!frame.empty())
+        //    frame.release();
         frame = _frame;
         //Imgproc.blur(frame, frame, new Size(blurValue, blurValue));
         diffImg.release();
@@ -30,17 +31,17 @@ public class MotionTrackerHSV extends MotionTracker {
         //Imgproc.cvtColor(diffImageHSV, diffImg, Imgproc.COLOR_HSV2BGR);
         //Imgproc.cvtColor(diffImageRGB, diffImg, Imgproc.COLOR_BayerGR2GRAY);
     }
-    void setColor(int hue, int sat, int val) {
+    public void setColor(int hue, int sat, int val) {
     	if(colors.size()== 0)
     		return;
     	colors.get(0)[0] = hue;
     	colors.get(0)[1] = sat;
     	colors.get(0)[2] = val;
     }
-    void setOffset(int _offset) {
+    public void setOffset(int _offset) {
     	offset = _offset;
     }
-    Mat removeBackground(Mat image) {
+    private Mat removeBackground(Mat image) {
     	Mat foreground = new Mat();
     	if(colors.size()==0)
     		return image;

@@ -7,12 +7,12 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
+import org.opencv.core.Point;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -24,8 +24,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -72,6 +74,11 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     private int processWidth = 480;
     private int processHeight = 360;
 
+    private static final int NORMAL = 0;
+    private static final int HSV = 1;
+    private static final int DIFF = 2;
+    private static final int TRACKING = 3;
+    private int DISPLAY_MODE = 0;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -200,11 +207,13 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     }
 
     private boolean startProcessing = false;
+    private Point objectCenter;
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
         Mat mHsv = new Mat();
         Mat mRgbaSmall = new Mat();
         Mat mRgbSmall = new Mat();
+        Mat mDisplay;
 
         if(!startProcessing)
             return inputFrame.rgba();
@@ -238,10 +247,26 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
             mtb.processDiffFrame();
             mtb.findMovingObjects();
             mtb.drawBiggestObject();
+            objectCenter = mtb.getBiggestObjectPos();
+
+
             //mtb.drawRectangles();
 
-            Imgproc.resize(mtb.getTrackImg(), mRgba, new Size(maxWidth,maxHeight));
-            //Imgproc.resize(mtb.getDiffImg(), mRgba, new Size(1280,720));
+            switch (DISPLAY_MODE) {
+                case HSV:
+                    mDisplay = mHsv;
+                    break;
+                case DIFF:
+                    mDisplay =  mtb.getDiffImg();
+                    break;
+                case TRACKING:
+                    mDisplay = mtb.getTrackImg();
+                    break;
+                default:
+                    mDisplay = inputFrame.rgba();
+            }
+
+            Imgproc.resize(mDisplay, mRgba, new Size(maxWidth,maxHeight));
 
             mHsv.release();
             mtb.getTrackImg().release();
@@ -283,10 +308,10 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
         tvYAxis.setText(Float.toString(rotationVector[1]));
         tvZAxis.setText(Float.toString(rotationVector[2]));
 
-
-
-
-        mOpenCvCameraView.getTop();
+        if(objectCenter != null) {
+            tv5.setText(Double.toString(objectCenter.x));
+            tv6.setText(Double.toString(objectCenter.y));
+        }
 
     }
 
@@ -300,8 +325,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
             return true;
 
         tv4.setText(Integer.toString(cameraDisplayLayout.getLeft()));
-        tv5.setText(Integer.toString(lastX));
-        tv6.setText(Integer.toString(lastY));
+        //tv5.setText(Integer.toString(lastX));
+        //tv6.setText(Integer.toString(lastY));
 
         startProcessing = true;
 
@@ -331,6 +356,27 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
         //mPreviousY = y;
         return true;
     }
+    public void onRadioButtonClicked(View view) {
+        // Is the button now checked?
+        boolean checked = ((RadioButton) view).isChecked();
+
+        // Check which radio button was clicked
+        switch(view.getId()) {
+            case R.id.radioButton:
+                if (checked)
+                    DISPLAY_MODE = NORMAL;
+                    break;
+            case R.id.radioButton2:
+                if (checked)
+                    DISPLAY_MODE = DIFF;
+                    break;
+            case R.id.radioButton3:
+                if (checked)
+                    DISPLAY_MODE = TRACKING;
+                break;
+        }
+    }
+
 
     private void initUI() {
 
@@ -341,7 +387,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
         tv4 = (TextView) findViewById(R.id.tv4);
         tv5 = (TextView) findViewById(R.id.tv5);
         tv6 = (TextView) findViewById(R.id.tv6);
-
         seekBar = (SeekBar) findViewById(R.id.seekBarHue);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 

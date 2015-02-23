@@ -68,23 +68,53 @@ android:layout_height="match_parent">
             <SeekBar
                 android:id="@+id/seekBarHue"
                 android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:max="180" />
+                android:layout_height="0dp"
+                android:max="180"
+                android:visibility="invisible" />
             <SeekBar
                 android:id="@+id/seekBarSat"
                 android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:max="255" />
+                android:layout_height="0dp"
+                android:max="255"
+                android:visibility="invisible" />
             <SeekBar
                 android:id="@+id/seekBarVal"
                 android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:max="255" />
+                android:layout_height="0dp"
+                android:max="255"
+                android:visibility="invisible" />
             <SeekBar
                 android:id="@+id/seekBarOffset"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:max="255" />
+
+            <RadioGroup
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <RadioButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NORMAL"
+                    android:id="@+id/radioButton"
+                    android:checked="true"
+                    android:onClick="onRadioButtonClicked" />
+
+                <RadioButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DIFF"
+                    android:id="@+id/radioButton2"
+                    android:onClick="onRadioButtonClicked" />
+
+                <RadioButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TRACK"
+                    android:id="@+id/radioButton3"
+                    android:onClick="onRadioButtonClicked" />
+                </RadioGroup>
+
         </LinearLayout>
 
     <LinearLayout

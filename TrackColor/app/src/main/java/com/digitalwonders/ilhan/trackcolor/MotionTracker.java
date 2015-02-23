@@ -28,7 +28,8 @@ public class MotionTracker {
 	protected boolean showTracker = false;
 	protected int minObjectArea;
 	protected List<Rect> rectangles;
-	        
+	protected MatOfPoint biggestContour;
+
 	public MotionTracker() {
 	    //def __init__(self, capture, showTrackerImage = False, calibrationFile = None, blur = 2):
 		diffImg = new Mat();
@@ -41,6 +42,7 @@ public class MotionTracker {
 		thresholdHigher= 40;
 		thresholdLower = 17;
 		minObjectArea = 50;
+
 		//self.showTracker = showTrackerImage
 		/*if not calibrationFile == None :
             self.estimator = le.LocationEstimator(calibrationFile)
@@ -48,7 +50,7 @@ public class MotionTracker {
             self.createDiffImageWindow()
         self.rectangles = None*/
 	}	
-	void processDiffFrame() {
+	public void processDiffFrame() {
 		
 		Mat tDiffImg = diffImg;
         Mat element;
@@ -63,34 +65,46 @@ public class MotionTracker {
         Imgproc.dilate(tDiffImg, tDiffImg, element);
         
         element = Imgproc.getStructuringElement( Imgproc.MORPH_RECT, kernelClose);
-        Imgproc.morphologyEx( tDiffImg, tDiffImg, Imgproc.MORPH_CLOSE, element );
+        Imgproc.morphologyEx( tDiffImg, diffImg, Imgproc.MORPH_CLOSE, element );
 	}
 	
-	void findMovingObjects() {
+	public void findMovingObjects() {
 
+        double biggestContourArea = 0;
+        double contourArea;
+        biggestContour = null;
         MatOfPoint contour;
         Mat canny_output = new Mat();
-
+        contours.clear();
+        contours = new ArrayList<MatOfPoint>();
         /// Detect edges using canny
         Imgproc.Canny( diffImg, canny_output, 100, 200, 3, true );
         /// Find contours
         Mat hierarcy = new Mat();
         Imgproc.findContours( canny_output, contours, hierarcy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
-        rectangles.clear();
+        canny_output.release();
+        hierarcy.release();
+
         
         for( int i = 0; i< contours.size(); i++ )
         {
             contour = contours.get(i);
-            if(Imgproc.contourArea(contour)<minObjectArea)
+            contourArea = Imgproc.contourArea(contour);
+            if(contourArea<minObjectArea)
                 continue;
+
+            if(contourArea>biggestContourArea) {
+                biggestContourArea = contourArea;
+                biggestContour = contour;
+            }
             
             Rect rect = Imgproc.boundingRect(contour);
             /*rect = findNonZeroBoundary(diffImg,rect);         Remove shadow
             if(rect.width == 0 || rect.height == 0)
                 continue;*/
             rectangles.add(rect);
-            
+
         }
 
     }
@@ -149,57 +163,49 @@ public class MotionTracker {
         return new Rect(0,0,0,0);
     }*/
     
-    void drawRectangles() {
+    public void drawRectangles() {
         trackImg = frame.clone();
         for(int i=0; i<rectangles.size();i++) {
             Core.rectangle(trackImg, new Point(rectangles.get(i).x,rectangles.get(i).y), new Point(rectangles.get(i).x+rectangles.get(i).width,rectangles.get(i).y+rectangles.get(i).height),new Scalar(255));
         }
     }
-    void drawBiggestObject() {
-    	int biggestObjectPos = findBiggestMovingObjectPos();
-        if(biggestObjectPos<0)
+    public Point getBiggestObjectPos() {
+        if(biggestContour == null)
+            return null;
+        Rect biggestObjectRect = Imgproc.boundingRect(biggestContour);
+        return new Point(biggestObjectRect.x + biggestObjectRect.width/2,biggestObjectRect.y + biggestObjectRect.height/2);
+    }
+
+    public void drawBiggestObject() {
+    	if(biggestContour == null)
             return;
     	trackImg = frame.clone();
-    	Rect biggestObjectRect = rectangles.get(biggestObjectPos);
+    	Rect biggestObjectRect = Imgproc.boundingRect(biggestContour);
     	Core.rectangle(trackImg, new Point(biggestObjectRect.x,biggestObjectRect.y), new Point(biggestObjectRect.x+biggestObjectRect.width,biggestObjectRect.y+biggestObjectRect.height),new Scalar(255));
     }
     
-    int findBiggestMovingObjectPos() {
-        int maxArea = 0;
-        int area;
-        int pos = -1;
-        for(int i=0; i<rectangles.size(); i++) {
-            area = rectangles.get(i).width*rectangles.get(i).height;
-            if(area>maxArea) {
-                maxArea=area;
-                pos = i;
-            }
-        }
-        return pos;
-    }
-    
-    Point findObject2dBottom(int pos) {
+    public Point findObject2dBottom(int pos) {
         Rect obj = rectangles.get(pos);
         return new Point(obj.x+obj.width/2,obj.y+obj.height);
     }
     
-    Point findObject2dCenter(int pos) {
+    public Point findObject2dCenter(int pos) {
         Rect obj = rectangles.get(pos);
         return new Point(obj.x+obj.width/2,obj.y+obj.height/2);
     }
-    Mat getDiffImg() {
+    public Mat getDiffImg() {
     	return diffImg;
     }
-    Mat getTrackImg() {
+    public Mat getTrackImg() {
     	return trackImg;
     }
-    Mat getFrame() {
+    public Mat getFrame() {
     	return frame;
     }
-    void setMinObjectArea(int areaSize) {
+    public void setMinObjectArea(int areaSize) {
     	minObjectArea = areaSize;
     }
-    void update() {}
+    public void update() {}
     
 }
 
