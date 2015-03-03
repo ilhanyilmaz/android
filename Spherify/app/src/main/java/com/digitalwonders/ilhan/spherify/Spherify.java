@@ -51,8 +51,13 @@ public class Spherify{
 
     private Point getUniformCoordinates(double angle, double dist) {
 
+
         Point uv = new Point();
         uv.y = (dist/(imageSize/2));
+        uv.y = uv.y*uv.y;
+        //uv.y = 1-(dist/(imageSize/2));
+        //uv.y = uv.y*uv.y;
+        //uv.y = 1- uv.y;
         uv.x = (angle/360);
         return uv;
     }
