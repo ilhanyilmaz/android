@@ -30,6 +30,7 @@ public class MotionTracker {
 	protected List<Rect> rectangles;
 	protected MatOfPoint biggestContour;
 
+
 	public MotionTracker() {
 	    //def __init__(self, capture, showTrackerImage = False, calibrationFile = None, blur = 2):
 		diffImg = new Mat();

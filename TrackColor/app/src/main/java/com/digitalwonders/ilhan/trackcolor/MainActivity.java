@@ -17,12 +17,15 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
@@ -32,12 +35,22 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
+
 //import android.support.v7.app.ActionBarActivity;
 
 
 public class MainActivity extends Activity implements CvCameraViewListener2, SensorEventListener {
 
     private static final String TAG = "OCVSample::Activity";
+
+    public native int convertNativeGray(long matAddrRgba, long matAddrGray);
+    public native int trackColor(long matAddrRgba, long matAddrGray, long r,long g, long b, int offset);
+
+    //private Mat mRgba;
+    private Mat mGray;
+
+
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private boolean              mIsJavaCamera = true;
@@ -80,12 +93,19 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     private static final int TRACKING = 3;
     private int DISPLAY_MODE = 0;
 
+
+    MediaRecorder recorder;
+    SurfaceHolder holder;
+    boolean recording = false;
+
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                 {
+                        System.loadLibrary("nativegray");
                     Log.i(TAG, "OpenCV loaded successfully");
                     mOpenCvCameraView.enableView();
                 } break;
@@ -124,6 +144,10 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
         rotationVector = new float[3];
 
         initUI();
+
+        //recorder = new MediaRecorder();
+        //initRecorder();
+
     }
 
     @Override
@@ -140,7 +164,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     public void onResume()
     {
         super.onResume();
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, mLoaderCallback);
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_9, this, mLoaderCallback);
         mSensorManager.registerListener(this, mRotationVector, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
@@ -188,19 +212,18 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     }
 
     public void onCameraViewStarted(int width, int height) {
-        mtb = new MotionTrackerHSV();
+        /*mtb = new MotionTrackerHSV();
         double[] color = new double[3];
         color[0] = seekBarHue;
         color[1] = seekBarSat;
         color[2] = seekBarVal;
         mtb.addColor(color);
 
-        //Display display = getWindowManager().getDefaultDisplay();
-        //Point size = new Point();
-        //display.getSize(size);
 
+        screenImageRatio = (float) (processHeight/ ((float)displayHeight));*/
 
-        screenImageRatio = (float) (processHeight/ ((float)displayHeight));
+        mRgba = new Mat();
+        mGray = new Mat();
     }
 
     public void onCameraViewStopped() {
@@ -210,7 +233,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
     private Point objectCenter;
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
-        Mat mHsv = new Mat();
+        mRgba = inputFrame.rgba();
+        //convertNativeGray(mRgba.getNativeObjAddr(), mGray.getNativeObjAddr());
+        long color[]= new long[3];
+        color[0] = 100;
+        color[1] = 100;
+        color[2] = 100;
+
+        trackColor(mRgba.getNativeObjAddr(), mGray.getNativeObjAddr(), color[0],color[1],color[2], 50);
+        return mGray;
+
+        /*Mat mHsv = new Mat();
         Mat mRgbaSmall = new Mat();
         Mat mRgbSmall = new Mat();
         Mat mDisplay;
@@ -220,6 +253,10 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
         try {
             //mRgba.release();
             mRgba = inputFrame.rgba().clone();
+
+
+
+
             Imgproc.resize(mRgba, mRgbaSmall, new Size(processWidth,processHeight));
             Imgproc.cvtColor(mRgbaSmall, mRgbSmall, Imgproc.COLOR_BGRA2BGR);
             mRgbaSmall.release();
@@ -289,7 +326,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
             if(!mtb.getDiffImg().empty())
                 mtb.getDiffImg().release();
             return inputFrame.rgba();
-        }
+        }*/
     }
 
     @Override
@@ -476,6 +513,47 @@ public class MainActivity extends Activity implements CvCameraViewListener2, Sen
             }
         });
     }
+
+    private void initRecorder() {
+        recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+        recorder.setVideoSource(MediaRecorder.VideoSource.DEFAULT);
+
+        CamcorderProfile cpHigh = CamcorderProfile
+                .get(CamcorderProfile.QUALITY_HIGH);
+        recorder.setProfile(cpHigh);
+        recorder.setOutputFile("/sdcard/videocapture_example.mp4");
+        recorder.setMaxDuration(50000); // 50 seconds
+        recorder.setMaxFileSize(5000000); // Approximately 5 megabytes
+    }
+
+    private void prepareRecorder() {
+        recorder.setPreviewDisplay(holder.getSurface());
+
+        try {
+            recorder.prepare();
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            finish();
+        } catch (IOException e) {
+            e.printStackTrace();
+            finish();
+        }
+    }
+
+    public void onClick(View v) {
+        if (recording) {
+            recorder.stop();
+            recording = false;
+
+            // Let's initRecorder so we can record again
+            initRecorder();
+            prepareRecorder();
+        } else {
+            recording = true;
+            recorder.start();
+        }
+    }
+
     /*@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
