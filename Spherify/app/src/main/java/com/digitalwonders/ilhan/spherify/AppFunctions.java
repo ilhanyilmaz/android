@@ -9,15 +9,12 @@ import android.net.Uri;
 import android.provider.MediaStore;
 import android.widget.Toast;
 
-/**
- * Created by ilhan on 22.02.2015.
- */
 public class AppFunctions {
 
     public AppFunctions() {
 
     }
-    public String getRealPathFromURI(Uri contentUri, ContentResolver contentResolver) {
+    public static String getRealPathFromURI(Uri contentUri, ContentResolver contentResolver) {
         String res = null;
         String[] proj = { MediaStore.Images.Media.DATA };
         Cursor cursor = contentResolver.query(contentUri, proj, null, null, null);
@@ -28,7 +25,7 @@ public class AppFunctions {
         cursor.close();
         return res;
     }
-    public Bitmap loadImage(String filename, Context context, boolean quality) {
+    public static Bitmap loadImage(String filename, Context context, boolean quality) {
 
         Toast toast;
         int duration = Toast.LENGTH_SHORT;
@@ -106,4 +103,14 @@ public class AppFunctions {
 
         return inSampleSize;
     }
+
+    public static void showToast(Context c, String msg) {
+        Toast toast;
+
+        int duration = Toast.LENGTH_SHORT;
+
+        toast = Toast.makeText(c, msg, duration);
+        toast.show();
+    }
+
 }

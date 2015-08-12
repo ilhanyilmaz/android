@@ -1,39 +1,34 @@
 package com.digitalwonders.ilhan.spherify;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Environment;
-import android.provider.MediaStore;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.ShareActionProvider;
 import android.widget.Toast;
 
-import org.opencv.core.Mat;
-
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.util.Random;
-
 
 public class SpherifyActivity extends Activity {
 
     private Spherify spherify;
     private Bitmap bitmap;
-    private AppFunctions appFunctions;
-    private ImageView imageView;
+    public static int NOTIFICATION_ID= 1;
+
+    private ProgressBar progressBar;
+    private int status = 1;
+
+    private NotificationCompat.Builder mBuilder;
+    private NotificationManager mNotificationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,89 +39,54 @@ public class SpherifyActivity extends Activity {
 
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_spherify, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
+    public void onResume() {
+        super.onResume();
+        status = 1;
     }
 
     @Override
     protected void onStop() {
-        super.onStop();
-        spherify.destroy();
-        bitmap.recycle();
 
+        //spherify.destroy();
+        //bitmap.recycle();
+        //spherify = null;
+        status = 0;
+        super.onStop();
     }
+
 
     private void init(){
 
-        appFunctions = new AppFunctions();
+        int smoothValue;
+        float topMargin;
+        float footMargin;
+        String imagePath;
 
-        Button saveButton = (Button) findViewById(R.id.buttonSave);
-        saveButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                saveIt();
-            }
-        });
-        imageView = (ImageView) findViewById(R.id.imageView);
+        progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
         Intent intent = getIntent();
-        Uri imageUri = Uri.parse(intent.getStringExtra(MainActivity.SPHERIFY_IMAGE_PATH));
-        String imagePath = appFunctions.getRealPathFromURI(imageUri, getContentResolver());
 
+        topMargin = intent.getFloatExtra(AppConstant.SPHERIFY_TOP_MARGIN, 0);
+        footMargin = intent.getFloatExtra(AppConstant.SPHERIFY_FOOT_MARGIN, 0);
+        smoothValue = intent.getIntExtra(AppConstant.SPHERIFY_SMOOTH_VALUE, 0);
 
-        spherify = new Spherify();
+        //Log.i("Spherify", "top: " + (topMargin));
+        //Log.i("Spherify", "foot: " + (footMargin));
 
+        Uri imageUri = Uri.parse(intent.getStringExtra(AppConstant.SPHERIFY_IMAGE_PATH));
+        imagePath = AppFunctions.getRealPathFromURI(imageUri, getContentResolver());
 
-        bitmap = appFunctions.loadImage(imagePath, getApplicationContext(), true);
+        spherify = new Spherify(this, topMargin, footMargin, smoothValue);
+        bitmap = AppFunctions.loadImage(imagePath, getApplicationContext(), true);
 
-
+        putNotification();
         spherifyIt();
     }
-    protected void saveIt() {
-        Toast toast;
-        Context context = getApplicationContext();
-        int duration = Toast.LENGTH_SHORT;
-        String text = "saving it! Please wait...";
-        toast = Toast.makeText(context, text, duration);
-        toast.show();
 
-        String root = Environment.getExternalStorageDirectory().toString();
-        File myDir = new File(root + "/spherified");
-        myDir.mkdirs();
-        Random generator = new Random();
-        int n = 10000;
-        n = generator.nextInt(n);
-        String fname = "Image-"+ n +".jpg";
-        File file = new File (myDir, fname);
-        if (file.exists ()) file.delete ();
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            out.flush();
-            out.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
 
     protected void spherifyIt() {
+
+
         Toast toast;
         Context context = getApplicationContext();
         int duration = Toast.LENGTH_SHORT;
@@ -134,30 +94,86 @@ public class SpherifyActivity extends Activity {
         toast = Toast.makeText(context, text, duration);
         toast.show();
 
-        new SpherifyTast().execute(bitmap);
+        //new SpherifyTask().execute(bitmap);
+        spherify.execute(bitmap);
+
+    }
+    public void setProgressPercent(int progress) {
+        progressBar.setProgress(progress);
+        updateNotification();
+    }
+
+    public void spherifyDoneActions() {
+        this.bitmap.recycle();
+
+        spherify.saveSpherified();
+        spherify.destroy();
+
+        updateNotificationDone();
+
+        finish();
+
+        if(status == 1)
+            startDisplayActivity();
 
     }
 
-    protected void displayBitmap(Bitmap bm) {
-        // find the imageview and draw it!
-        bitmap.recycle();
-        bitmap = bm;
-        imageView.setImageBitmap(bm);
+
+    private void startDisplayActivity() {
+
+        Intent intent = new Intent(this, DisplayActivity.class);
+        intent.putExtra(AppConstant.SPHERIFY_IMAGE_PATH, spherify.getFullSaveFilePath());
+        startActivity(intent);
     }
 
-    private class SpherifyTast extends AsyncTask<Bitmap, Void, Bitmap> {
-        /** The system calls this to perform work in a worker thread and
-         * delivers it the parameters given to AsyncTask.execute() */
-        protected Bitmap doInBackground(Bitmap... bitmaps) {
-            return spherify.spherifyIt(bitmaps[0]);
-        }
 
-        /** The system calls this to perform work in the UI thread and delivers
-         * the result from doInBackground() */
-        protected void onPostExecute(Bitmap result) {
-            displayBitmap(result);
-        }
+
+    private void putNotification() {
+
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mBuilder = new NotificationCompat.Builder(this)
+                        .setSmallIcon(R.drawable.ic_mood_black_18dp)
+                        .setContentTitle("Spherify")
+                        .setContentText("Progress")
+                        .setProgress(100, 0, false);
+
+
+        // Creates an explicit intent for an Activity in your app
+
+        /**/
+
+
+        // mId allows you to update the notification later on.
+        mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
+
     }
 
+    private void updateNotification() {
+        mBuilder.setProgress(100, progressBar.getProgress(), false);
+        // Displays the progress bar for the first time.
+        mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
+    }
+
+    private void updateNotificationDone() {
+
+        Intent resultIntent = new Intent(this, DisplayActivity.class);
+        resultIntent.putExtra(AppConstant.SPHERIFY_IMAGE_PATH, spherify.getFullSaveFilePath());
+        resultIntent.setAction(Intent.ACTION_MAIN);
+        resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        PendingIntent resultPendingIntent =
+                PendingIntent.getActivity(this,
+                        0,
+                        resultIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+
+        mBuilder.setContentText("Spherifying Done!")
+                .setProgress(0, 0, false)
+                .setContentIntent(resultPendingIntent);
+
+        // Displays the progress bar for the first time.
+        mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
+    }
 
 }
